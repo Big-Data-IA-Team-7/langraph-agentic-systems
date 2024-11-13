@@ -1,113 +1,133 @@
-from langchain_pinecone import PineconeVectorStore
-from langchain_openai import OpenAIEmbeddings
-from langchain.tools.retriever import create_retriever_tool
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
+from langgraph.graph import END, StateGraph
 
-from langgraph.errors import GraphRecursionError
-
-from langgraph.prebuilt import tools_condition
-from langgraph.graph import END, StateGraph, START
-from langgraph.prebuilt import ToolNode
-
+from langchain_core.agents import AgentAction
 from state_schema import AgentState
+from config import OPENAI_API_KEY
+from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
+from utilities import create_scratchpad, build_report
 
-from edges_nodes import grade_documents, rewrite, generate
+system_prompt = """You are the supervisor, the great AI tool manager.
+Given the user's query you must orchestrate a path where the query is first
+sent to a web_search tool. Upon returning from the web_search tool you send the
+content of the query to the fetch_arxiv tool to retrieve the content from relevant arxiv pages.
+From the fetch_arxiv tool you must send the query to the rag_search tool. 
+You are allowed to reuse tools to get additional information if necessary.
 
-from dotenv import load_dotenv
-load_dotenv()
-import os
-import pprint
+If you see that a tool has been used (in the scratchpad) with a particular
+query, do NOT use that same tool with the same query again. Also, do NOT use
+any tool more than twice (ie, if the tool appears in the scratchpad twice, do
+not use it again).
 
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-openai_api_key = os.getenv("OPENAI_API_KEY")
-index_name = "documentfortynine"
+You should aim to collect information from a diverse range of sources before
+providing the answer to the user. Once you have collected plenty of information
+to answer the user's question (stored in the scratchpad) use the final_answer
+tool."""
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large", api_key=openai_api_key)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    MessagesPlaceholder(variable_name="chat_history"),
+    ("user", "{input}"),
+    ("assistant", "scratchpad: {scratchpad}"),
+])
 
-vectorstore = PineconeVectorStore(index_name=index_name,
-                                            pinecone_api_key=pinecone_api_key,
-                                            embedding=embeddings)
-
-retriever = vectorstore.as_retriever()
-
-retriever_tool = create_retriever_tool(
-    retriever,
-    "retrieve_some_like_it_hedged_cfa",
-    "Search and return information from this document which focuses on strategies for managing foreign currency exposure \
-    in institutional investment portfolios.",
+llm = ChatOpenAI(
+    model="gpt-4o",
+    openai_api_key=OPENAI_API_KEY,
+    temperature=0
 )
 
-tools = [retriever_tool]
+tools=[
+    rag_search,
+    web_search,
+    fetch_arxiv,
+    final_answer
+]
 
-def agent(state):
-    """
-    Invokes the agent model to generate a response based on the current state. Given
-    the question, it will decide to retrieve using the retriever tool, or simply end.
-
-    Args:
-        state (messages): The current state
-
-    Returns:
-        dict: The updated state with the agent response appended to messages
-    """
-    print("---CALL AGENT---")
-    messages = state["messages"]
-    model = ChatOpenAI(temperature=0, streaming=True, model="gpt-4-turbo")
-    model = model.bind_tools(tools)
-    response = model.invoke(messages)
-    # We return a list, because this will get added to the existing list
-    return {"messages": [response]}
-
-# Define a new graph
-workflow = StateGraph(AgentState)
-
-# Define the nodes we will cycle between
-workflow.add_node("agent", agent)  # agent
-retrieve = ToolNode([retriever_tool])
-workflow.add_node("retrieve", retrieve)  # retrieval
-workflow.add_node("rewrite", rewrite)  # Re-writing the question
-workflow.add_node(
-    "generate", generate
-)  # Generating a response after we know the documents are relevant
-# Call agent node to decide to retrieve or not
-workflow.add_edge(START, "agent")
-
-# Decide whether to retrieve
-workflow.add_conditional_edges(
-    "agent",
-    # Assess agent decision
-    tools_condition,
+oracle = (
     {
-        # Translate the condition outputs to nodes in our graph
-        "tools": "retrieve",
-        END: END,
-    },
+        "input": lambda x: x["input"],
+        "chat_history": lambda x: x["chat_history"],
+        "scratchpad": lambda x: create_scratchpad(
+            intermediate_steps=x["intermediate_steps"]
+        ),
+    }
+    | prompt
+    | llm.bind_tools(tools, tool_choice="any")
 )
 
-# Edges taken after the `action` node is called.
-workflow.add_conditional_edges(
-    "retrieve",
-    # Assess agent decision
-    grade_documents,
-)
-workflow.add_edge("generate", END)
-workflow.add_edge("rewrite", "agent")
+def run_oracle(state: list):
+    out = oracle.invoke(state)
+    tool_name = out.tool_calls[0]["name"]
+    tool_args = out.tool_calls[0]["args"]
+    action_out = AgentAction(
+        tool=tool_name,
+        tool_input=tool_args,
+        log="TBD"
+    )
+    return {
+        "intermediate_steps": [action_out]
+    }
 
-# Compile
-graph = workflow.compile()
-
-inputs = {
-    "messages": [
-        ("user", "What does Lilian Weng say about the types of agent memory?"),
-    ]
+def router(state: list):
+    # return the tool name to use
+    if isinstance(state["intermediate_steps"], list):
+        return state["intermediate_steps"][-1].tool
+    else:
+        # if we output bad format go to final answer
+        print("Router invalid format")
+        return "final_answer"
+    
+tool_str_to_func = {
+    "rag_search": rag_search,
+    "fetch_arxiv": fetch_arxiv,
+    "web_search": web_search,
+    "final_answer": final_answer
 }
 
-try:
-    for output in graph.stream(inputs, {"recursion_limit": 3}):
-        for key, value in output.items():
-            pprint.pprint(f"Output from node '{key}':")
-            pprint.pprint("---")
-            pprint.pprint(value, indent=2, width=80, depth=None)
-        pprint.pprint("\n---\n")
-except GraphRecursionError:
-    print("The information is not present in the provided context.")
+def run_tool(state: list):
+    # use this as helper function so we repeat less code
+    tool_name = state["intermediate_steps"][-1].tool
+    tool_args = state["intermediate_steps"][-1].tool_input
+    print(f"{tool_name}.invoke(input={tool_args})")
+    # run tool
+    out = tool_str_to_func[tool_name].invoke(input=tool_args)
+    action_out = AgentAction(
+        tool=tool_name,
+        tool_input=tool_args,
+        log=str(out)
+    )
+    return {"intermediate_steps": [action_out]}
+
+graph = StateGraph(AgentState)
+
+graph.add_node("oracle", run_oracle)
+graph.add_node("rag_search", run_tool)
+graph.add_node("fetch_arxiv", run_tool)
+graph.add_node("web_search", run_tool)
+graph.add_node("final_answer", run_tool)
+
+graph.set_entry_point("oracle")
+
+graph.add_conditional_edges(
+    source="oracle",  # where in graph to start
+    path=router,  # function to determine which node is called
+)
+
+for tool_obj in tools:
+    if tool_obj.name != "final_answer":
+        graph.add_edge(tool_obj.name, "oracle")
+
+graph.add_edge("final_answer", END)
+
+runnable = graph.compile()
+
+out = runnable.invoke({
+    "input": "tell me something interesting about hedging for japanese investors",
+    "chat_history": [],
+})
+
+print(build_report(
+    output=out["intermediate_steps"][-1].tool_input
+))
