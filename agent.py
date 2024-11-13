@@ -8,12 +8,15 @@ from config import OPENAI_API_KEY
 from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
 from utilities import create_scratchpad, build_report
 
-system_prompt = """You are the supervisor, the great AI tool manager.
+system_prompt = """
+You are the supervisor, the great AI tool manager.
 Given the user's query you must orchestrate a path where the query is first
-sent to a web_search tool. Upon returning from the web_search tool you send the
-content of the query to the fetch_arxiv tool to retrieve the content from relevant arxiv pages.
-From the fetch_arxiv tool you must send the query to the rag_search tool. 
-You are allowed to reuse tools to get additional information if necessary.
+sent to a rag_search tool.
+
+If relevant information is found in the rag_search tool then you must navigate 
+to the web_search tool. Upon returning from the web_search tool you must send 
+the query to the fetch_arxiv tool to retrieve the content from relevant arxiv
+pages. You are allowed to reuse tools to get additional information if necessary.
 
 If you see that a tool has been used (in the scratchpad) with a particular
 query, do NOT use that same tool with the same query again. Also, do NOT use
@@ -23,7 +26,8 @@ not use it again).
 You should aim to collect information from a diverse range of sources before
 providing the answer to the user. Once you have collected plenty of information
 to answer the user's question (stored in the scratchpad) use the final_answer
-tool."""
+tool.
+"""
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
@@ -58,7 +62,10 @@ oracle = (
 )
 
 def run_oracle(state: list):
+    print("run_oracle")
+    print(f"intermediate_steps: {state['intermediate_steps']}")
     out = oracle.invoke(state)
+    print(out)
     tool_name = out.tool_calls[0]["name"]
     tool_args = out.tool_calls[0]["args"]
     action_out = AgentAction(
@@ -78,6 +85,12 @@ def router(state: list):
         # if we output bad format go to final answer
         print("Router invalid format")
         return "final_answer"
+
+def rag_router(state: list):
+    if state["intermediate_steps"][-1].log == "I don't know.":
+        return END
+    else:
+        return "oracle"
     
 tool_str_to_func = {
     "rag_search": rag_search,
@@ -115,8 +128,13 @@ graph.add_conditional_edges(
     path=router,  # function to determine which node is called
 )
 
+graph.add_conditional_edges(
+    source="rag_search",
+    path=rag_router,
+)
+
 for tool_obj in tools:
-    if tool_obj.name != "final_answer":
+    if tool_obj.name not in ["final_answer", "rag_search"]:
         graph.add_edge(tool_obj.name, "oracle")
 
 graph.add_edge("final_answer", END)
@@ -124,7 +142,7 @@ graph.add_edge("final_answer", END)
 runnable = graph.compile()
 
 out = runnable.invoke({
-    "input": "tell me something interesting about hedging for japanese investors",
+    "input": "tell me something interesting about hedging for canadian investors",
     "chat_history": [],
 })
 

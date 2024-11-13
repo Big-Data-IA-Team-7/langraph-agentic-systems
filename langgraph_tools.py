@@ -17,7 +17,7 @@ def format_docs(docs):
 
 @tool("fetch_arxiv")
 def fetch_arxiv(query: str):
-    """Perform retrieval from Arxiv website and get a response from an the retriever."""
+    """Perform retrieval from Arxiv website and get a response from a retriever."""
     retriever = ArxivRetriever(
     load_max_docs=3,
     get_ful_documents=True,
@@ -60,7 +60,16 @@ def rag_search(query: str):
 
     retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 6})
 
-    prompt = hub.pull("rlm/rag-prompt")
+    prompt = prompt = ChatPromptTemplate.from_template("""You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. If you know the answer, you must include atleast one image path along with its description in the response.
+    How can you recognize the image path and description? The image path and description are in the following format:
+    ![Local Image](data:image/png;base64,Image Path: s3://langraph-agentic-systems/images/... - Image Description: Description Text...
+            
+Question: {question} 
+
+Context: {context} 
+
+Answer:"""
+)
 
     llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-4o-mini", api_key=OPENAI_API_KEY)
 
@@ -98,6 +107,7 @@ def final_answer(
     introduction: str,
     research_steps: str,
     main_body: str,
+    exhibits: str,
     conclusion: str,
     sources: str
 ):
@@ -110,10 +120,13 @@ def final_answer(
     - `main_body`: this is where the bulk of high quality and concise
     information that answers the user's question belongs. It is 3-4 paragraphs
     long in length.
+    - `exhibits`: this is where links to the images are provided along with
+    a one sentence description of the image.
     - `conclusion`: this is a short single paragraph conclusion providing a
     concise but sophisticated view on what was found.
-    - `sources`: a bulletpoint list provided detailed sources for all information
-    referenced during the research process
+    - `sources`: a bulletpoint list of sources enclosed in brackets '[]' along 
+    with urls enclosed in parentheses '()' detailing sources for all information 
+    referenced during the research process. Example: [Source](https://example.com)
     """
     if type(research_steps) is list:
         research_steps = "\n".join([f"- {r}" for r in research_steps])
