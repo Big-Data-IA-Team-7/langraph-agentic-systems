@@ -1,12 +1,13 @@
+from langchain_core.agents import AgentAction
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, StateGraph
+from langchain_core.runnables import RunnableConfig
 
-from langchain_core.agents import AgentAction
-from state_schema import AgentState
-from config import OPENAI_API_KEY
+from copilotkit.langchain import copilotkit_emit_state
+
 from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
-from utilities import create_scratchpad, build_report
+from utilities import create_scratchpad
+from config import OPENAI_API_KEY
 
 system_prompt = """
 You are the supervisor, the great AI tool manager.
@@ -61,11 +62,11 @@ oracle = (
     | llm.bind_tools(tools, tool_choice="any")
 )
 
-def run_oracle(state: list):
+async def run_oracle(state: list, config: RunnableConfig):
+
     print("run_oracle")
     print(f"intermediate_steps: {state['intermediate_steps']}")
     out = oracle.invoke(state)
-    print(out)
     tool_name = out.tool_calls[0]["name"]
     tool_args = out.tool_calls[0]["args"]
     action_out = AgentAction(
@@ -73,24 +74,12 @@ def run_oracle(state: list):
         tool_input=tool_args,
         log="TBD"
     )
+
+    await copilotkit_emit_state(config, state)
+
     return {
         "intermediate_steps": [action_out]
     }
-
-def router(state: list):
-    # return the tool name to use
-    if isinstance(state["intermediate_steps"], list):
-        return state["intermediate_steps"][-1].tool
-    else:
-        # if we output bad format go to final answer
-        print("Router invalid format")
-        return "final_answer"
-
-def rag_router(state: list):
-    if state["intermediate_steps"][-1].log == "I don't know.":
-        return END
-    else:
-        return "oracle"
     
 tool_str_to_func = {
     "rag_search": rag_search,
@@ -112,40 +101,3 @@ def run_tool(state: list):
         log=str(out)
     )
     return {"intermediate_steps": [action_out]}
-
-graph = StateGraph(AgentState)
-
-graph.add_node("oracle", run_oracle)
-graph.add_node("rag_search", run_tool)
-graph.add_node("fetch_arxiv", run_tool)
-graph.add_node("web_search", run_tool)
-graph.add_node("final_answer", run_tool)
-
-graph.set_entry_point("oracle")
-
-graph.add_conditional_edges(
-    source="oracle",  # where in graph to start
-    path=router,  # function to determine which node is called
-)
-
-graph.add_conditional_edges(
-    source="rag_search",
-    path=rag_router,
-)
-
-for tool_obj in tools:
-    if tool_obj.name not in ["final_answer", "rag_search"]:
-        graph.add_edge(tool_obj.name, "oracle")
-
-graph.add_edge("final_answer", END)
-
-runnable = graph.compile()
-
-out = runnable.invoke({
-    "input": "tell me something interesting about hedging for canadian investors",
-    "chat_history": [],
-})
-
-print(build_report(
-    output=out["intermediate_steps"][-1].tool_input
-))
