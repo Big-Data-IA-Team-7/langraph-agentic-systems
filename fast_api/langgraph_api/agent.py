@@ -1,4 +1,5 @@
 from langgraph.graph import END, StateGraph
+from langgraph.checkpoint.memory import MemorySaver
 
 from oracle import run_tool, run_oracle
 from state_schema import AgentState
@@ -31,6 +32,7 @@ def rag_router(state: list):
     
     return END
 
+memory = MemorySaver()
 graph.set_entry_point("oracle")
 graph.add_conditional_edges(
     "oracle",
@@ -45,7 +47,7 @@ graph.add_conditional_edges(
 graph.add_edge("web_search", "oracle")
 graph.add_edge("fetch_arxiv", "oracle")
 graph.add_edge("final_answer", END)
-runnable = graph.compile()
+runnable = graph.compile(checkpointer=memory)
 
 # out = runnable.invoke({
 #     "input": "tell me something interesting about hedging for canadian investors",
