@@ -3,8 +3,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableConfig
 
-from copilotkit.langchain import copilotkit_emit_state
-
 from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
 from utilities import create_scratchpad
 from config import OPENAI_API_KEY
@@ -62,7 +60,10 @@ oracle = (
     | llm.bind_tools(tools, tool_choice="any")
 )
 
-async def run_oracle(state: list, config: RunnableConfig):
+def run_oracle(state: list, config: RunnableConfig):
+
+    state["resources"] = state.get("resources", [])
+    state["logs"] = state.get("logs", [])
 
     print("run_oracle")
     print(f"intermediate_steps: {state['intermediate_steps']}")
@@ -74,8 +75,6 @@ async def run_oracle(state: list, config: RunnableConfig):
         tool_input=tool_args,
         log="TBD"
     )
-
-    await copilotkit_emit_state(config, state)
 
     return {
         "intermediate_steps": [action_out]

@@ -5,7 +5,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.tools import tool
-from langchain import hub
 
 from serpapi import GoogleSearch
 import os
