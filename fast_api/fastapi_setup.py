@@ -6,6 +6,5 @@ app = FastAPI()
 
 # # Include the routers
 app.include_router(data_routes.router, prefix="/data", tags=["Data Operations"])
-app.include_router(langraph_route.router, prefix="/langraph", tags=["LangGraph Operations"])
-app.include_router(download_pdf_route.router, prefix="/pdf", tags=["PDF Download Operations"])
-app.include_router(download_codelab_route.router, prefix="/codelabs", tags=["CodeLab Download Operations"])
+app.include_router(langraph_routes.router, prefix="/langraph", tags=["LangGraph Operations"])
+app.include_router(download_routes.router, prefix="/download", tags=["PDF Download Operations"])
