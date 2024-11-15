@@ -31,4 +31,4 @@ def create_codelab_from_string(content):
 def serve_codelab():
     codelab_id = 'chatbot-generated-codelab'
     os.chdir(codelab_id)
-    subprocess.run(['claat', 'serve'])
+    subprocess.run(['claat', 'serve', '-addr', '0.0.0.0:9090'])
