@@ -3,9 +3,9 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableConfig
 
-from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
+from fast_api.langgraph_api.langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
 from fast_api.langgraph_api.utilities import create_scratchpad
-from config import OPENAI_API_KEY
+from fast_api.langgraph_api.config import OPENAI_API_KEY
 
 system_prompt = """
 You are the supervisor, the great AI tool manager.

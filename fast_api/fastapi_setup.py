@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fast_api.routes import data_routes,langraph_route, download_pdf_route, download_codelab_route
+from fast_api.routes import data_routes,langraph_routes, download_routes
 
 # # Create FastAPI instance
 app = FastAPI()

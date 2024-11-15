@@ -26,6 +26,8 @@ streamlit = "^1.40.1"
 streamlit-pdf-viewer = "^0.0.19"
 boto3 = "^1.35.61"
 snowflake-connector-python = "^3.12.3"
+pdfkit = "^1.0.0"
+markdown = "^3.7"
 
 
 [build-system]

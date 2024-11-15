@@ -2,6 +2,10 @@ import streamlit as st
 import requests
 import os
 
+@st.fragment
+def download_fragment(file_content: bytes, file_name: str) -> None:
+    st.download_button('**Download File**', data=file_content, file_name=file_name, key="download_file_button")
+
 def chat_pdf():
     st.title(f"Chat with {st.session_state.title}")
     if 'history' not in st.session_state:
@@ -29,11 +33,10 @@ def chat_pdf():
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             params = {
-                "file_name": st.session_state.file_name,
-                "user_question": user_input
+                "input_query": user_input
             }
             response = requests.get(
-                f"{os.getenv("FAST_API_URL")}/query/ask-question/",
+                f"{os.getenv("FAST_API_URL")}/langraph/get-langraph-response/",
                 params=params
             )
 
@@ -50,3 +53,28 @@ def chat_pdf():
     if st.button("Clear Chat"):
         st.session_state['history'] = []
         st.rerun()
+    if st.button("Extract Into PDF"):
+        params = {
+            "md_text": st.session_state.response
+        }
+        response = requests.get(
+            f"{os.getenv("FAST_API_URL")}/download/download-pdf/",
+            params=params
+        )
+
+        if response.status_code == 200:
+
+            download_fragment(response.content, f"{st.session_state.title}_report.pdf")
+        else:
+            st.error("Error generating PDF")
+
+    if st.button("Extract Report Into Codelabs"):
+        
+        params = {
+            "md_text": st.session_state.response
+        }
+
+        response = requests.get(
+            f"{os.getenv("FAST_API_URL")}/query/ask-question/",
+            params=params
+        )

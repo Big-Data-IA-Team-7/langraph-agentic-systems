@@ -3,14 +3,13 @@ import boto3
 import base64
 import pdfkit
 import markdown
-from config import AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
 import os
 
 # Initialize boto3 client for S3
 s3_client = boto3.client(
     's3',
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
 
 # Function to get image as Base64 from S3
@@ -33,7 +32,7 @@ def get_image_base64_from_s3(s3_url):
         return None
 
 # Function to convert specific markdown to PDF with Base64 images
-def convert_markdown_to_pdf(md_text, output_pdf_file):
+def convert_markdown_to_pdf(md_text):
     # Define the pattern for matching S3 image URLs with potential placeholders in markdown
     s3_image_pattern = r"data:image/png;base64,Image Path:\s*(s3://[^\s)]+)"
     
@@ -45,17 +44,12 @@ def convert_markdown_to_pdf(md_text, output_pdf_file):
 
     # Perform the replacement
     md_text = re.sub(s3_image_pattern, replace_with_base64, md_text)
-    # # Configure PDF options, if necessary
-    # pdf_options = {
-    #     'quiet': '',
-    #     'enable-local-file-access': None,  # required for base64 images
-    # }
 
     html_content = markdown.markdown(md_text)
 
     # Use pdfkit to convert the HTML to PDF
     try:
-        pdfkit.from_string(html_content, output_pdf_file)
-        print(f"PDF successfully generated: {output_pdf_file}")
+        return pdfkit.from_string(html_content, False)
+        # print(f"PDF successfully generated: {output_pdf_file}")
     except Exception as e:
         print(f"Error generating PDF: {e}")
