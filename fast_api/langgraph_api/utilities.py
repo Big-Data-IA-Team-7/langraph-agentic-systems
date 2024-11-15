@@ -19,27 +19,27 @@ def build_report(output: dict):
     if type(sources) is list:
         sources = "\n".join([f"- {s}" for s in sources])
     return f"""
-### INTRODUCTION
+## INTRODUCTION
 ------------
 {output["introduction"]}
 
-### RESEARCH STEPS
+## RESEARCH STEPS
 --------------
 {research_steps}
 
-### REPORT
+## REPORT
 ------
 {output["main_body"]}
 
-### EXHIBITS
+## EXHIBITS
 ------
 {output["exhibits"]}
 
-### CONCLUSION
+## CONCLUSION
 ----------
 {output["conclusion"]}
 
-### SOURCES
+## SOURCES
 -------
 {sources}
 """

@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import os
-
+from fast_api.services.google_codelabs import serve_codelab
 @st.fragment
 def download_fragment(file_content: bytes, file_name: str) -> None:
     st.download_button('**Download File**', data=file_content, file_name=file_name, key="download_file_button")
@@ -67,14 +67,22 @@ def chat_pdf():
             download_fragment(response.content, f"{st.session_state.title}_report.pdf")
         else:
             st.error("Error generating PDF")
-
     if st.button("Extract Report Into Codelabs"):
-        
-        params = {
-            "md_text": st.session_state.response
+    
+        content = st.session_state.response
+        # Define the payload to match the expected JSON format
+        payload = {
+            "content": content
         }
-
-        response = requests.get(
-            f"{os.getenv("FAST_API_URL")}/query/ask-question/",
-            params=params
-        )
+        
+        try:
+            response = requests.get(
+                f"{os.getenv('FAST_API_URL')}/google-codelabs/create-codelab",
+                json=payload
+            )
+            if response.status_code == 200:
+                serve_codelab()
+            else:
+                st.error(f"Error: {response.json().get('detail', 'Unknown error')}")
+        except requests.RequestException as e:
+            st.error(f"Request failed: {e}")

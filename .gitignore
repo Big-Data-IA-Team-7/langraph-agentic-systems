@@ -162,3 +162,5 @@ cython_debug/
 #.idea/
 /studio
 /node_modules
+
+chatbot-generated-codelab

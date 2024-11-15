@@ -31,4 +31,3 @@ st.set_page_config(page_title="My Application", page_icon=":material/lock:")
 pg.run()
 
 
-
