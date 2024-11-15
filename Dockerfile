@@ -15,6 +15,11 @@ RUN go install github.com/googlecodelabs/tools/claat@latest
 # Stage 2: Main Python Applications
 FROM python:3.12.7
 
+# Install dependencies for wkhtmltopdf
+RUN apt-get update && apt-get install -y \
+    wkhtmltopdf \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /code
 
 # Install Poetry
@@ -29,7 +34,6 @@ COPY ./fast_api /code/fast_api
 COPY ./features /code/features
 COPY ./navigation /code/navigation
 COPY ./streamlit_app.py /code/streamlit_app.py
-COPY ./agent /code/agent
 
 # Copy claat binary from the Go build stage
 COPY --from=go-stage /go/bin/claat /usr/local/bin/claat
