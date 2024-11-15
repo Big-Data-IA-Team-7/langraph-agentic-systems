@@ -60,6 +60,8 @@ def upload_to_s3(local_file_path: str, s3_key: str):
     print(f"Uploaded image to {s3_key}")
 
 
+
+
 # Process PDFs from S3 and store images locally, then upload to S3
 def process_and_store_pdfs_from_s3():
     # Get AWS credentials and bucket info from environment variables
