@@ -1,14 +1,14 @@
 from langchain_core.agents import AgentAction
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from langchain_core.runnables import RunnableConfig
 
 from fast_api.langgraph_api.langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
 from fast_api.langgraph_api.utilities import create_scratchpad
 from fast_api.langgraph_api.config import OPENAI_API_KEY
 
 system_prompt = """
-You are the supervisor, the great AI tool manager.
+You are the supervisor, the great AI tool manager. The user's query contains the input question along with index_name.
+The format of query is: "Query, index_name: nameofindex".
 Given the user's query you must orchestrate a path where the query is first
 sent to a rag_search tool.
 
@@ -31,7 +31,7 @@ tool.
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
     MessagesPlaceholder(variable_name="chat_history"),
-    ("user", "{input}"),
+    ("user", "{input}, index_name: {index_name}"),
     ("assistant", "scratchpad: {scratchpad}"),
 ])
 
@@ -52,6 +52,7 @@ oracle = (
     {
         "input": lambda x: x["input"],
         "chat_history": lambda x: x["chat_history"],
+        "index_name": lambda x: x["index_name"],
         "scratchpad": lambda x: create_scratchpad(
             intermediate_steps=x["intermediate_steps"]
         ),
@@ -60,7 +61,7 @@ oracle = (
     | llm.bind_tools(tools, tool_choice="any")
 )
 
-def run_oracle(state: list, config: RunnableConfig):
+def run_oracle(state: list):
 
     state["resources"] = state.get("resources", [])
     state["logs"] = state.get("logs", [])

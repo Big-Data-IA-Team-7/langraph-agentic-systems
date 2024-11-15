@@ -33,7 +33,8 @@ def chat_pdf():
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             params = {
-                "input_query": user_input
+                "input_query": user_input,
+                "index_name": st.session_state.file_name.replace(".pdf", "")
             }
             response = requests.get(
                 f"{os.getenv("FAST_API_URL")}/langraph/get-langraph-response/",

@@ -33,19 +33,21 @@ def get_image_base64_from_s3(s3_url):
 
 # Function to convert specific markdown to PDF with Base64 images
 def convert_markdown_to_pdf(md_text):
+    print(md_text)
     # Define the pattern for matching S3 image URLs with potential placeholders in markdown
     s3_image_pattern = r"data:image/png;base64,Image Path:\s*(s3://[^\s)]+)"
-    
+    default_url="https://www.google.com/url?sa=i&url=https%3A%2F%2Fcommons.wikimedia.org%2Fwiki%2FFile%3ANo_Image_Available.jpg&psig=AOvVaw174IZJZwn8Lgel8boWQ7fw&ust=1731727562053000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCIjc2oWy3YkDFQAAAAAdAAAAABAE"
     # Replace each S3 URL in markdown with its corresponding Base64 image data
     def replace_with_base64(match):
         s3_path = match.group(1)
         image_base64 = get_image_base64_from_s3(s3_path)
-        return image_base64 if image_base64 else s3_path  # Fall back to original S3 path if conversion fails
+        return image_base64 if image_base64 else  default_url
 
     # Perform the replacement
     md_text = re.sub(s3_image_pattern, replace_with_base64, md_text)
 
     html_content = markdown.markdown(md_text)
+    print(html_content)
 
     # Use pdfkit to convert the HTML to PDF
     try:

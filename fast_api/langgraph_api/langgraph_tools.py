@@ -3,7 +3,7 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_community.retrievers import ArxivRetriever
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableParallel, chain
 from langchain_core.tools import tool
 
 from serpapi import GoogleSearch
@@ -44,11 +44,10 @@ def fetch_arxiv(query: str):
     return response
 
 @tool("rag_search")
-def rag_search(query: str):
+def rag_search(query: str, index_name: str):
     """Perform RAG operation and get a response from an agent."""
     print("---CALL REACT AGENT---")
     pinecone_api_key = os.getenv("PINECONE_API_KEY")
-    index_name = "documentfortynine"
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large", api_key=OPENAI_API_KEY)
 
@@ -59,9 +58,9 @@ def rag_search(query: str):
 
     retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 6})
 
-    prompt = prompt = ChatPromptTemplate.from_template("""You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. If you know the answer, you must include atleast one image path along with its description in the response.
+    prompt = ChatPromptTemplate.from_template("""You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. If you know the answer, you must include atleast one image path along with its description in the response.
     How can you recognize the image path and description? The image path and description are in the following format:
-    ![Local Image](data:image/png;base64,Image Path: s3://langraph-agentic-systems/images/... - Image Description: Description Text...
+    ![Local Image](data:image/png;base64,Image Path: s3://langraph-agentic-systems/images/{index_name}/picture-n.png - Image Description: Description Text...). Where n in picture-n is a number.
             
 Question: {question} 
 
@@ -72,14 +71,28 @@ Answer:"""
 
     llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-4o-mini", api_key=OPENAI_API_KEY)
 
-    rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
+    @chain
+    def run_retriever(input_):
+        """Run the retriever to get the relevant documents."""
+        docs = retriever.invoke(input_["question"])
+        return format_docs(docs)
+    
+    rag_chain = RunnablePassthrough.assign(context=run_retriever) | prompt | llm | StrOutputParser()
 
-    response = rag_chain.invoke(query)
+#     rag_chain = RunnableParallel({
+#     "context": retriever | format_docs,
+#     "question": RunnablePassthrough(),
+#     "index_name": RunnablePassthrough(),
+# }) | prompt | llm | StrOutputParser()
+
+    # rag_chain = (
+    #     {"context": retriever | format_docs, "question": RunnablePassthrough(), "index_name": RunnablePassthrough()}
+    #     | prompt
+    #     | llm
+    #     | StrOutputParser()
+    # )
+
+    response = rag_chain.invoke({"question": query, "index_name": index_name})
 
     return response
 

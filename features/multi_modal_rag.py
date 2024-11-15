@@ -45,7 +45,10 @@ def multi_modal_rag():
 
                 # Display the image in the first column
                 with image_col:
-                    st.image(selected_row['IMAGE_URL'], width=150)
+                    if selected_row['IMAGE_URL'] != '':
+                        st.image(selected_row['IMAGE_URL'], width=150)
+                    else:
+                        st.text("No Image present")
                 
                     pdf_url = selected_row['PDF_S3_URL']
                     st.session_state.file_name = pdf_url.split("/")[-1]
