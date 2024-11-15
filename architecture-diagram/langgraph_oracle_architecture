@@ -1,0 +1,19 @@
+digraph "LangGraph Oracle and Agents" {
+	rankdir=LR
+	start [label=__start__ color=black shape=ellipse]
+	end [label=__end__ color=black shape=ellipse]
+	oracle [label=oracle color=yellow shape=ellipse style=filled]
+	rag_search [label=rag_search color=blue shape=ellipse]
+	fetch_arxiv [label=fetch_arxiv color=blue shape=ellipse]
+	web_search [label=web_search color=blue shape=ellipse]
+	final_answer [label=final_answer color=blue shape=ellipse]
+	start -> oracle
+	oracle -> rag_search [style=dashed]
+	rag_search -> oracle [style=dashed]
+	oracle -> fetch_arxiv [style=dashed]
+	fetch_arxiv -> oracle [style=dashed]
+	oracle -> web_search [style=dashed]
+	web_search -> oracle [style=dashed]
+	oracle -> final_answer
+	final_answer -> end
+}
