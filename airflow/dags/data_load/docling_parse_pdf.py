@@ -14,13 +14,12 @@ from langchain_pinecone import PineconeVectorStore
 from docling.datamodel.base_models import FigureElement, InputFormat, Table
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from dotenv import load_dotenv
 from openai import OpenAI
+from data_load.parameter_config import OPENAI_API_KEY,PINECONE_API_KEY,AWS_ACCESS_KEY_ID,AWS_S3_BUCKET_NAME,AWS_SECRET_ACCESS_KEY
 import re
 import base64
 
-# Load environment variables
-load_dotenv()
+
 
 # Function to encode the image to base64
 def encode_image(image_path):
@@ -31,7 +30,7 @@ def encode_image(image_path):
 # Function to describe the image using OpenAI API
 def describe_image(image_path):
     base64_image = encode_image(image_path)
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -54,24 +53,24 @@ def describe_image(image_path):
 
 # Function to upload a local file to S3
 def upload_to_s3(local_file_path: str, s3_key: str):
-    s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                      aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"))
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY_ID,
+                      aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
     with open(local_file_path, 'rb') as image_file:
-        s3.put_object(Bucket=os.getenv("S3_BUCKET_NAME_4"), Key=s3_key, Body=image_file, ContentType='image/png')
+        s3.put_object(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key, Body=image_file, ContentType='image/png')
     print(f"Uploaded image to {s3_key}")
 
 
 # Process PDFs from S3 and store images locally, then upload to S3
 def process_and_store_pdfs_from_s3():
     # Get AWS credentials and bucket info from environment variables
-    aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-    bucket_name = os.getenv("S3_BUCKET_NAME_4")
+    aws_access_key = AWS_ACCESS_KEY_ID
+    aws_secret_key = AWS_SECRET_ACCESS_KEY
+    bucket_name = AWS_S3_BUCKET_NAME
     prefix = "research-files/"
 
     # Initialize OpenAI embeddings and Pinecone
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large", api_key=os.getenv("OPENAI_API_KEY"))
-    pinecone_api_key = os.getenv("PINECONE_API_KEY")
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large", api_key=OPENAI_API_KEY)
+    pinecone_api_key = PINECONE_API_KEY
     pc = Pinecone(api_key=pinecone_api_key)
 
     # Connect to S3 and list all PDF files in the bucket
