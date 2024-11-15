@@ -9,7 +9,7 @@ from langchain_core.tools import tool
 from serpapi import GoogleSearch
 import os
 
-from config import SERPAPI_PARAMS, OPENAI_API_KEY
+from fast_api.langgraph_api.config import SERPAPI_PARAMS, OPENAI_API_KEY
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)

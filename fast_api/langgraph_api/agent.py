@@ -2,8 +2,8 @@ from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 
 from oracle import run_tool, run_oracle
-from state_schema import AgentState
-from utilities import build_report
+from fast_api.langgraph_api.state_schema import AgentState
+from fast_api.langgraph_api.utilities import build_report
 
 graph = StateGraph(AgentState)
 

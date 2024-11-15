@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableConfig
 
 from langgraph_tools import rag_search, fetch_arxiv, web_search, final_answer
-from utilities import create_scratchpad
+from fast_api.langgraph_api.utilities import create_scratchpad
 from config import OPENAI_API_KEY
 
 system_prompt = """
