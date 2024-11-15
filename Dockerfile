@@ -34,6 +34,7 @@ COPY ./fast_api /code/fast_api
 COPY ./features /code/features
 COPY ./navigation /code/navigation
 COPY ./streamlit_app.py /code/streamlit_app.py
+COPY .env /code/.env
 
 # Copy claat binary from the Go build stage
 COPY --from=go-stage /go/bin/claat /usr/local/bin/claat
