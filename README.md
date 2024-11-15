@@ -11,7 +11,7 @@ A research tool designed for efficient document parsing, vector storage, and mul
 - **Google Codelab**: [Codelab Link](https://codelabs-preview.appspot.com/?file_id=1vszytuEvvTvKJ0HBTtyutGN9P6chE_JkjfU5P4c9TVY#0)
 - **App (Deployed on AWS EC2)**: [Streamlit Link](http://75.101.133.31:8501/)
 - **Airflow (Deployed on AWS EC2)**: [Airflow Link](http://75.101.133.31:8080/)
-- **YouTube Demo**: [Demo Link](https://www.youtube.com/watch?v=CXxs2pT1LVo)
+- **YouTube Demo**: [Demo Link](https://www.youtube.com/watch?v=rMcNf_Q8OeE)
 
 ## Features
 
