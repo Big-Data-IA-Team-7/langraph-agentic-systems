@@ -1,5 +1,6 @@
 import subprocess
 import tempfile
+import threading
 import os
  
 def create_codelab_from_string(content):
@@ -28,7 +29,17 @@ def create_codelab_from_string(content):
     finally:
         os.unlink(temp_file_path)
 
+# def serve_codelab():
+#     codelab_id = 'chatbot-generated-codelab'
+#     os.chdir(codelab_id)
+#     subprocess.run(['claat', 'serve', '-addr', '0.0.0.0:9090'])
+
+# Function to serve the codelab
 def serve_codelab():
     codelab_id = 'chatbot-generated-codelab'
-    os.chdir(codelab_id)
-    subprocess.run(['claat', 'serve', '-addr', '0.0.0.0:9090'])
+    subprocess.run(['claat', 'serve', '-addr', '0.0.0.0:9090'], cwd=codelab_id)
+
+# Start the codelab server in a background thread
+def start_codelab_server():
+    server_thread = threading.Thread(target=serve_codelab, daemon=True)
+    server_thread.start()
