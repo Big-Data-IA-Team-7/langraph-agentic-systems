@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import os
-from fast_api.services.google_codelabs import serve_codelab
+from fast_api.services.google_codelabs import start_codelab_server
 from dotenv import load_dotenv
 import os
 
@@ -87,7 +87,7 @@ def chat_pdf():
                 json=payload
             )
             if response.status_code == 200:
-                serve_codelab()
+                start_codelab_server()
             else:
                 st.error(f"Error: {response.json().get('detail', 'Unknown error')}")
         except requests.RequestException as e:
