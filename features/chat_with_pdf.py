@@ -2,6 +2,11 @@ import streamlit as st
 import requests
 import os
 from fast_api.services.google_codelabs import serve_codelab
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
 @st.fragment
 def download_fragment(file_content: bytes, file_name: str) -> None:
     st.download_button('**Download File**', data=file_content, file_name=file_name, key="download_file_button")
