@@ -25,7 +25,7 @@ def multi_modal_rag():
     if 'file_path' not in st.session_state:
         st.session_state.file_path = None
 
-    st.title('Multi Modal RAG, Summary and Report Generation App')
+    st.title('MultiAgent System - Langgraph')
 
     # Fetch data from FastAPI endpoint
     response = requests.get(f"{os.getenv("FAST_API_URL")}/data/get-data/")
